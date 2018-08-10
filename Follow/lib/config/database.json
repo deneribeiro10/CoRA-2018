@@ -1,0 +1,17 @@
+{
+  "development": {
+    "host": "localhost",
+    "login":"root",
+    "password":"",
+    "port": 3306,
+    "database":"dbmovieme"
+  },
+
+  "production": {
+    "host": "localhost",
+    "login":"root",
+    "password":"",
+    "port": 3306,
+    "database":"dbmovieme"
+  }
+}
