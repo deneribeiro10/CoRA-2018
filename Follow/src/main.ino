@@ -1,5 +1,11 @@
 #include "../lib/Robot.h"
 
-Robot walle = new Robot();
+void setup() {
+  Robot walle = new Robot();
+  walle.create();
+}
 
-walle.create();
+void loop() {
+
+}
+
