@@ -10,19 +10,23 @@
       int motor_right[2];
       int enable_right;
       int s[5];
+      int btn;
       Robot();
-      Robot(int,int[],int[],int);
+      Robot(int,int[],int[],int, int);
       void create();
       void startMotorLeft(int);
       void startMotorRight(int);
       void motorSetVel(int,int);
       void stopMotorLeft();
       void stopMotorRight();
-      int* sensorReadAll();
+      bool* sensorReadAll();
       int sensorRead(int, int);
-      void sensorCalibrate(int);
-      void drive(int, int);
-    private:
+      void sensorCalibrate();
+      void drive(int, int, int);
+      void waitBtnPress();
+      int getState(bool*, int);
+      void sensorPrint();
+      void sensorReset();
       int sMax[5];
       int sMin[5];
   };
@@ -37,24 +41,28 @@
     for(int i = 0;i < 5;i++) {
       this->s[i] = i;
     }
+    this->btn = 12;
   }
 
-  Robot::Robot(int enable_left, int motor_left[], int motor_right[], int enable_right) {
+  Robot::Robot(int enable_left, int motor_left[], int motor_right[], int enable_right, int btn) {
     this->enable_left = enable_left;
     this->motor_left[0] = motor_left[0];
     this->motor_left[1] = motor_left[1];
     this->motor_right[0] = motor_right[0];
     this->motor_right[1] = motor_right[1];
     this->enable_right = enable_right;
+    this->btn = btn;
   }
 
   void Robot::create() {
+    Serial.begin(9600);
     pinMode(this->enable_left, OUTPUT);
     pinMode(this->motor_left[0], OUTPUT);
     pinMode(this->motor_left[1], OUTPUT);
     pinMode(this->motor_right[0], OUTPUT);
     pinMode(this->motor_right[1], OUTPUT);
     pinMode(this->enable_right, OUTPUT);
+    pinMode(this->btn, INPUT);
   }
 
   void Robot::startMotorLeft(int vel) {
@@ -70,14 +78,14 @@
   }
 
   void Robot::motorSetVel(int velR, int velL) {
-      if(velR > 0)
-        this->startMotorRight(velR);
-      else
-        this->stopMotorRight();
-      if(velL > 0)
-        this->startMotorLeft(velL);
-      else
-        this->stopMotorLeft();
+    if(velR > 0)
+      this->startMotorRight(velR);
+    else
+      this->stopMotorRight();
+    if(velL > 0)
+      this->startMotorLeft(velL);
+    else
+      this->stopMotorLeft();
   }
 
   void Robot::stopMotorLeft() {
@@ -100,69 +108,88 @@
       return media/amostras;
   }
 
-  int* Robot::sensorReadAll() {
-    int sen[5];
-    for(int i = 0;i < 5;i++) {
-      sen[i] = this->sensorRead(this->s[i]);
+  bool* Robot::sensorReadAll() {
+    bool sen[5];
+    for(int i=0; i<5; i++) {
+      sen[i] = map(this->sensorRead(i), this->sMin[i], this->sMax[i], 0, 100) < 50;
     }
     return sen;
   }
 
-  void Robot::sensorCalibrate(int btn) {
-    bool btA, bt = false;
+  void Robot::drive(int vel, int turn = 0, int last_erro = 0) {
+      const int Kp = 90;
+      const int Kd = 60;
+      const int baseSpeed = 200;
 
-    //aguarda botão (borda de descida)
-    Serial.println("Press button to calibrate maximum value");
-    do {
-      btA = bt;
-      bt = digitalRead(btn);
-    } while(!(bt == 0 && btA == 1));
+      int motorSpeed = Kp * turn + Kd * (turn - last_erro);
+      int rightMotorSpeed = baseSpeed - motorSpeed;
+      int leftMotorSpeed = baseSpeed + motorSpeed;
 
-    //calibração máximo
-    for(int i = 0;i < 5;i++) {
-      sMax[i] = this->sensorRead(this->s[i]);
-      Serial.println(sMax[i]);
-    }
-
-    //aguarda botão (borda de descida)
-    Serial.println("Press button to calibrate minimum value");
-    do {
-      btA = bt;
-      bt = digitalRead(btn);
-    } while(!(bt == 0 && btA == 1));
-
-    //calibração mínimo
-    for(int i = 0;i < 5;i++) {
-      sMin[i] = this->sensorRead(this->s[i]);
-      Serial.println(sMin[i]);
-    }
-    Serial.println("Calibration succesful");
+      if (rightMotorSpeed > vel ) rightMotorSpeed = vel; // prevent the motor from going beyond max speed
+      if (leftMotorSpeed > vel ) leftMotorSpeed = vel; // prevent the motor from going    beyond max speed
+      if (rightMotorSpeed < 0) rightMotorSpeed = 0; // keep the motor speed positive
+      if (leftMotorSpeed < 0) leftMotorSpeed = 0;
+      // keep the motor speed positive
+      this->motorSetVel(rightMotorSpeed, leftMotorSpeed);
   }
 
-  void Robot::drive(int vel, int turn) {
-    switch(turn) {
-      case 2: 
-        this->stopMotorRight();
-        this->startMotorLeft(vel);
-        break;
-      case 1:
-        this->startMotorRight(vel/2);
-        this->startMotorLeft(vel);
-        break;
-      case 0:
-        this->startMotorRight(vel);
-        this->startMotorLeft(vel);
-        break;
-      case -1:
-        this->startMotorRight(vel);
-        this->startMotorLeft(vel/2);
-        break;
-      case -2:
-        this->startMotorRight(vel);
-        this->stopMotorLeft();
-        break;
-      default:
-        break;
+  void Robot::sensorCalibrate() {
+    bool btA, bt = false;
+
+    Serial.println("Press button to calibrate");
+    this->sensorReset();
+    this->waitBtnPress();
+    for(int i = 0; i < 5;i++) {
+        this->sMax[i] = max(this->sensorRead(i), this->sMax[i]);
+    }
+    this->waitBtnPress();
+    for(int i = 0; i < 5;i++) {
+      this->sMin[i] = min(this->sensorRead(i), this->sMin[i]);
+    }
+    Serial.println("Calibration ok");
+  }
+
+  void Robot::waitBtnPress() {
+  	bool btA, bt = false;
+  	do {
+  		btA = bt;
+  		bt = digitalRead(this->btn);
+  	} while(bt || !btA);
+  }
+
+  int Robot::getState(bool* s, int last) {
+    if(!s[1] && s[2] && !s[3]) {
+      return 0;
+    }
+    if(s[1] && s[2] && !s[3]) {
+      return -1;
+    }
+    if(!s[1] && s[2] && s[3]) {
+      return 1;
+    }
+    if(s[1] && !s[2] && !s[3]) {
+      return -2;
+    }
+    if(!s[1] && !s[2] && s[3]) {
+      return 2;
+    }
+    if(s[1] && s[2] && s[3]) {
+        return 0;
+    }
+    return last;
+  }
+
+  void Robot::sensorPrint() {
+    for(int i=0; i<5; i++) {
+      Serial.println( this->sensorRead(i) );
+    }
+    Serial.println();
+  }
+
+  void Robot::sensorReset() {
+    for(int i=0; i<5; i++) {
+      this->sMin[i] = 1023;
+      this->sMax[i] = 0;
     }
   }
 
