@@ -1,210 +1,151 @@
 #include "lib/Robot.h"
 
-enum state {
-	parado,
-	follow,
-	turnRight,
-  turnLeft,
-  preRight,
-  preLeft,
-  rotatoryRight,
-  rotatoryLeft,
-	pedestrianCrossing
-};
-
 #define VEL_MAX 254
-#define BEST_WAY true
-#define TURN_TIMER 1200
 
 Robot *sheep = new Robot();
-state robot_state;
 int erro;
 int last_erro = 0;
 int sqrCount[2] = {0, 0};
-bool *s;
-bool s_last[2] = {false, false};
+bool* s;
+bool s_last[7];
+bool inversao = false;
 
 void setup() {
-	robot_state = follow;
+  counterReset();
+  resetLast();
 	sheep->create();
 	sheep->sensorCalibrate();
-	sheep->waitBtnPress();
+  sheep->waitBtnPress();
 }
 
 void loop() {
-	switch(robot_state) {
-		case follow:
-			s = sheep->sensorReadAll();
-			erro = sheep->getState(s, last_erro);
-			sheep->drive(VEL_MAX, erro, last_erro);
-      last_erro=erro;
-			sensorPulse(true);
-			specialCases();
-		break;
-
-		case turnRight:
-    robot_state = parado;
-   Serial.println("t r");
-//      sqrCount[1]--;
-//      sheep->motorSetVel(0, VEL_MAX);
-//      delay(TURN_TIMER);
-//      sheep->motorSetVel(0, 0);
-//      if(sqrCount[1] > 0) {
-//        robot_state = rotatoryRight;
-//      } else {
-//        robot_state = follow; // follow
-//      }
-//      erro = 2;
-//      last_erro = 2;
-		break;
-
-		case turnLeft:
-    robot_state = parado;
-    Serial.println("t l");
-//      sqrCount[0]--;
-//      sheep->motorSetVel(VEL_MAX, 0);
-//      delay(TURN_TIMER);
-//      sheep->motorSetVel(0, 0);
-//      if(sqrCount[0] > 0) {
-//        robot_state = rotatoryLeft;
-//      } else {
-//        robot_state = follow; // follow
-//      }
-//      erro = -2;
-//      last_erro = -2;
-		break;
-
-    case preLeft:
-    robot_state = parado;
-    Serial.println("p l");
-//      s = sheep->sensorReadAll();
-//      if(s[2] && !s[3]) {
-//        sheep->motorSetVel(VEL_MAX, 0);
-//      } else if(!s[2] && s[3]) {
-//        sheep->motorSetVel(0, VEL_MAX);
-//      } else if(s[2] && s[3]) {
-//        sheep->motorSetVel(VEL_MAX, VEL_MAX);
-//      }
-//      sensorPulse(true);
-//      specialCases();
-    break;
-
-    case preRight:
-    robot_state = parado;
-    Serial.println("p r");
-//      s = sheep->sensorReadAll();
-//      if(s[1] && !s[2]) {
-//        sheep->motorSetVel(VEL_MAX, 0);
-//      } else if(!s[1] && s[2]) {
-//        sheep->motorSetVel(0, VEL_MAX);
-//      } else if(s[1] && s[2]) {
-//        sheep->motorSetVel(VEL_MAX, VEL_MAX);
-//      }
-//      sensorPulse(true);
-//      specialCases();
-    break;
-
-    case rotatoryRight:
-    robot_state = parado;
-    Serial.println("r r");
-//      s = sheep->sensorReadAll();
-//      if(s[1] && !s[2]) {
-//        sheep->stopMotorLeft();
-//      } else if(!s[1] && s[2]) {
-//        sheep->stopMotorRight();
-//      } else {
-//        sheep->motorSetVel(VEL_MAX, VEL_MAX);
-//      }
-//      sensorPulse(false);
-//      if(sqrCount[1] == 0) {
-//        robot_state = preRight;
-//      }
-    break;
-
-    case rotatoryLeft:
-    robot_state = parado;
-    Serial.println("r l");
-//      
-//      sensorPulse(false);
-//      if(sqrCount[0] == 0) {
-//        robot_state = preLeft;
-//      }
-    break;
-
-    case parado: 
-      sheep->motorSetVel(0,0);
-    break;
-
-		case pedestrianCrossing:
-    Serial.println("p c");
-			// sheep->motorSetVel(VEL_MAX,VEL_MAX);
-			// if(s[2] == 1 && sheep->sensorRead(dir90) <= 50) {
-			// 	delay(5000); //substituir por um contador com uma variável global
-			// }
-			Serial.println("predestrian crossing");
-			counterReset();
-		break;
-	}
-}
-
-void specialCases() {
-  if(!s[0] && !s[1] && !s[2] && !s[3] && !s[4]) {
-    robot_state = parado;
-  }
-	if(sqrCount[0] == sqrCount[1]) {
-    if(s[1] && s[3]) {
-      robot_state = BEST_WAY ? turnRight : turnLeft;
-    }
-	} else if(sqrCount[0] > sqrCount[1] && robot_state != preLeft) {
-    robot_state = preLeft;
-    return;
-	} else if(robot_state != preRight) {
-    robot_state = preRight;
-    return;
-	}
-
-  if(robot_state == preLeft && s[0] && s[1]) {
-    robot_state = turnLeft;
-  }
-  if(robot_state == preRight && s[3] && s[4]) {
-    robot_state = turnRight;
-  }
-	// if((s[0] && s[4]) && !(s[1] && s[3])) { //dois quadrados indicando que deve escolher direita ou esquerda
-	// 	dir90 = BEST_WAY;
-	// 	robot = turnRight;
-	// } else if((s[0] || s[4]) && !(s[1] || s[3])) {
-	// 	s[0] ? dir90 = 1 : dir90 = 3;
-	// 	sqrCount = 1;
-	// 	robot = turnRight;
-	// } else if(!s[2] && (s[0] && s[1] && s[3] && s[4])) {
-	// 	robot = pedestrianCrossing;
-	// }
-}
-
-void sensorPulse(bool increase) {
-  if(increase) {
-    if(!s[0] && s_last[0]) {
-      sqrCount[0]++;
-    }
-    if(!s[4] && s_last[1]) {
-      sqrCount[1]++;
-    }  
-  } else {
-    if(!s[0] && s_last[0]) {
-      sqrCount[0]--;
-    }
-    if(!s[4] && s_last[1]) {
-      sqrCount[1]--;
-    }
-  }
+  follow(false); // ok
   Serial.println(sqrCount[0]);
   Serial.println(sqrCount[1]);
-	
-	s_last[0] = s[0];
-	s_last[1] = s[4];
+  Serial.println();
+}
+
+void follow(bool only_follow) {
+	s = sheep->sensorReadAll();
+	erro = sheep->getState(s, last_erro);
+	sheep->drive(VEL_MAX, erro, last_erro);
+	last_erro=erro;
+
+  if(s[0] && s[1] && s[2] && !s[3] && s[4] && s[5] && s[6]) {
+    inversao = true;
+    last_erro = 0;
+    erro = 0;
+    only_follow = true;
+    counterReset();
+  }
+
+  if(inversao && !s[0] && !s[1] && !s[2] && !s[3] && !s[4] && !s[5] && !s[6]) {
+    sheep->motorSetVel(0, 0);
+    delay(5000);
+    sheep->motorSetVel(VEL_MAX, VEL_MAX);
+    do {
+      s = sheep->sensorReadAll();
+      erro = sheep->getState(s, last_erro);
+    } while(erro == last_erro);
+    only_follow = false;
+    counterReset();
+  }
+
+  if(!only_follow) {
+    counter();
+    if(sqrCount[1] > 0) {
+      if(s[6] && s[5]) 
+        turnRight();   
+    } else if(sqrCount[0] > 0) {
+      if(s[0] && s[1]) 
+        turnLeft();
+    }
+
+  }
+}
+
+void turnRight() {
+	sheep->motorSetVel(0, VEL_MAX);
+	do {
+		atualizaLast();
+		s = sheep->sensorReadAll();
+	} while(s_last[5] || !s[5]);
+	sqrCount[1]--;
+	if(sqrCount[1] > 0) {
+    rotatoryRight();
+	} else {
+    counterReset();
+	}
+}
+
+void turnLeft() {
+	sheep->motorSetVel(VEL_MAX, 0);
+	do {
+		atualizaLast();
+		s = sheep->sensorReadAll();
+	} while(s_last[2] || !s[2]);
+	sqrCount[0]--;
+  if(sqrCount[0] > 0) {
+    rotatoryLeft();
+  } else {
+    counterReset();
+  }
+}
+
+void rotatoryRight() {
+  bool can = true;
+  do {
+    follow(true);  
+    if(s[5] && s[6] && can) {
+      sqrCount[1]--;
+      can = false;
+    } 
+    if(!s[5] && !s[6]) {
+      can = true;
+    }
+  } while(sqrCount[1] > 0);
+  turnRight();
+}
+
+void rotatoryLeft() {
+  bool can = true;
+  do {
+    follow(true);  
+    if(s[1] && s[2] && can) {
+      sqrCount[0]--;
+      can = false;
+    } 
+    if(!s[1] && !s[2]) {
+      can = true;
+    }
+  } while(sqrCount[0] > 0);
+  turnLeft();
+}
+
+void counter() {
+	if(s[0] && !s_last[0] && !s[1]) {
+		sqrCount[0]++;
+	}
+	if(s[6] && !s_last[6] && !s[5]) {
+		sqrCount[1]++;
+	}
+	atualizaLast();
+}
+
+void atualizaLast() {
+  for(int i=0; i<7; i++) {
+    s_last[i] = s[i];
+  }
+}
+
+void resetLast() {
+	for(int i=0; i<7; i++) {
+    s_last[i] = false;
+	}
 }
 
 void counterReset() {
-	sqrCount[0] = 0;
-	sqrCount[1] = 0;
+  sqrCount[0] = 0;
+  sqrCount[1] = 0;
 }
+
