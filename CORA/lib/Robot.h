@@ -43,10 +43,10 @@ Robot::Robot() {
 	this->s[0] = 0;
 	this->s[1] = 1;
 	this->s[2] = 2;
-	this->s[3] = 8;
-	this->s[4] = 3;
-	this->s[5] = 4;
-	this->s[6] = 5;
+	this->s[3] = 3;
+	this->s[4] = 4;
+	this->s[5] = 5;
+	this->s[6] = 6;
 	this->btn = 12;
 }
 
@@ -68,7 +68,6 @@ void Robot::create() {
 	pinMode(this->motor_right[0], OUTPUT);
 	pinMode(this->motor_right[1], OUTPUT);
 	pinMode(this->enable_right, OUTPUT);
-	pinMode(this->s[3], INPUT);
 	pinMode(this->btn, INPUT);
 }
 
@@ -109,12 +108,6 @@ void Robot::stopMotorRight() {
 
 int Robot::sensorRead(int sen, int amostras = 32) {
 	int media = 0;
-	if(3 == sen) {
-		for(int j=0; j<32; j++) {
-			media += digitalRead(this->s[3]) ? 0 : 1;
-		}
-		return media;
-	}
 	for(int j = 0;j < amostras;j++) {
 		media += analogRead(this->s[sen]);
 	}
@@ -131,8 +124,8 @@ bool* Robot::sensorReadAll() {
 
 void Robot::drive(int vel, int turn = 0, int last_erro = 0) {
 	const int Kp = 70; //50
-	const int Kd = 50;
-	const int baseSpeed = 200;
+	const int Kd = 0; //30
+	const int baseSpeed = 210; //200
 
 	int motorSpeed = Kp * turn + Kd * (turn - last_erro);
 	int rightMotorSpeed = baseSpeed - motorSpeed;
@@ -182,6 +175,10 @@ int Robot::getState(bool* s, int last) {
 	// if(!s[1] && !s[2] && !s[3] && s[4] && !s[5]) return 2;
 	// if(!s[1] && !s[2] && !s[3] && s[4] && s[5]) return 3;
 	// if(!s[1] && !s[2] && !s[3] && !s[4] && s[5]) return 4;
+	//
+	// if(s[1] && s[5]) {
+	// 	return 0;
+	// }
 	//
 	// if(s[1] && s[2] && !s[3] && s[4] && s[5]) return 0;
 

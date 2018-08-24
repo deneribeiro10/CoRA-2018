@@ -20,9 +20,6 @@ void setup() {
 
 void loop() {
   follow(false); // ok
-  Serial.println(sqrCount[0]);
-  Serial.println(sqrCount[1]);
-  Serial.println();
 }
 
 void follow(bool only_follow) {
@@ -33,24 +30,15 @@ void follow(bool only_follow) {
 
   if(s[0] && s[1] && s[2] && !s[3] && s[4] && s[5] && s[6]) {
     inversao = true;
-    last_erro = 0;
-    erro = 0;
     only_follow = true;
     counterReset();
   }
-
   if(inversao && !s[0] && !s[1] && !s[2] && !s[3] && !s[4] && !s[5] && !s[6]) {
-    sheep->motorSetVel(0, 0);
-    delay(5000);
-    sheep->motorSetVel(VEL_MAX, VEL_MAX);
-    do {
-      s = sheep->sensorReadAll();
-      erro = sheep->getState(s, last_erro);
-    } while(erro == last_erro);
+    pedestre();
     only_follow = false;
     counterReset();
   }
-
+ 
   if(!only_follow) {
     counter();
     if(sqrCount[1] > 0) {
@@ -60,7 +48,6 @@ void follow(bool only_follow) {
       if(s[0] && s[1]) 
         turnLeft();
     }
-
   }
 }
 
@@ -111,25 +98,40 @@ void rotatoryLeft() {
   bool can = true;
   do {
     follow(true);  
-    if(s[1] && s[2] && can) {
+    if(s[0] && s[1] && can) {
       sqrCount[0]--;
       can = false;
     } 
-    if(!s[1] && !s[2]) {
+    if(!s[0] && !s[1]) {
       can = true;
     }
   } while(sqrCount[0] > 0);
   turnLeft();
 }
 
+void pedestre() {
+  erro = 0;
+  last_erro = 0;
+  sheep->motorSetVel(0, 0);
+    delay(5000);
+    sheep->motorSetVel(VEL_MAX, VEL_MAX);
+    do {
+      s = sheep->sensorReadAll();
+      erro = sheep->getState(s, last_erro);
+    } while(erro == last_erro);
+}
+
 void counter() {
-	if(s[0] && !s_last[0] && !s[1]) {
+	if(s[0] && !s_last[0] && !s[1] && s[3]) {
 		sqrCount[0]++;
 	}
-	if(s[6] && !s_last[6] && !s[5]) {
+	if(s[6] && !s_last[6] && !s[5] && s[3]) {
 		sqrCount[1]++;
 	}
 	atualizaLast();
+ Serial.println(sqrCount[0]);
+ Serial.println(sqrCount[1]);
+ Serial.println();
 }
 
 void atualizaLast() {
